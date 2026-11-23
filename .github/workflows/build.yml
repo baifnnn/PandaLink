@@ -39,6 +39,8 @@ jobs:
 
       - name: 编译（不签名，arm64，iOS 16.1）
         run: |
+          # 需要 python3 做 ad-hoc 签名（macOS runner 自带）
+          python3 --version
           set -o pipefail
           xcodebuild \
             -project PandaLink.xcodeproj \
