@@ -11,7 +11,7 @@ on:
 jobs:
   build:
     # iOS SDK / xcodebuild 只在 macOS 上存在
-    runs-on: macos-13
+    runs-on: macos-latest
     timeout-minutes: 40
 
     steps:
@@ -20,6 +20,7 @@ jobs:
 
       - name: 选择 Xcode
         run: |
+          ls /Applications | grep -i xcode || true
           if [ -d /Applications/Xcode_15.4.app ]; then
             sudo xcode-select -s /Applications/Xcode_15.4.app
           else
