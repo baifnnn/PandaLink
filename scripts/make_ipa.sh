@@ -61,6 +61,9 @@ WORK="$STAGE/Payload/PandaLink.app"
 rm -rf "$WORK/_CodeSignature" "$WORK/SC_Info" "$WORK/embedded.mobileprovision"
 
 # ---- ad-hoc 签名（补 LC_CODE_SIGNATURE 槽 + entitlements）----
+# entitlements 走外部 plist：iOS 16.1 + TrollStore 下 ad-hoc 签名保留特批权限
+# （wifi-info / HotspotConfiguration），普通开发者证书拿不到这两项。
+export PANDALINK_ENTITLEMENTS="$ROOT/scripts/PandaLink.entitlements"
 python3 scripts/sign_unsigned.py "$WORK" \
   --json "$DIST/sign-report.json" \
   || { echo "✗ 签名失败" >&2; exit 1; }

@@ -4,10 +4,26 @@
 <dict>
 	<key>application-identifier</key>
 	<string>top.shareway.pandalink</string>
+
+	<!-- 本地网络：NWListener 六端口 + Bonjour 广播 -->
 	<key>com.apple.security.network.client</key>
 	<true/>
 	<key>com.apple.security.network.server</key>
 	<true/>
+
+	<!-- 读当前 Wi-Fi 的 SSID / BSSID，用于判断是否已连上车机热点 -->
+	<key>com.apple.developer.networking.wifi-info</key>
+	<true/>
+
+	<!-- 让 App 自己也能开热点（可选路径；普通证书拿不到，TrollStore 下 ad-hoc 签进去即可） -->
+	<key>com.apple.developer.networking.HotspotConfiguration</key>
+	<true/>
+
+	<!-- 后台保活：投屏过程中不能被挂起 -->
+	<key>com.apple.security.device.audio-input</key>
+	<true/>
+
+	<!-- 允许调试附加，方便真机联调时看日志 -->
 	<key>get-task-allow</key>
 	<true/>
 </dict>
