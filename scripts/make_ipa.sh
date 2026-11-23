@@ -60,6 +60,28 @@ WORK="$STAGE/Payload/PandaLink.app"
 # 清掉可能存在的旧签名残留
 rm -rf "$WORK/_CodeSignature" "$WORK/SC_Info" "$WORK/embedded.mobileprovision"
 
+# ---- 图标兜底 ----
+# 正常路径：Assets.xcassets 被 actool 编成 Assets.car + AppIcon 键。
+# 兜底路径：如果 actool 没跑（或资产目录没进资源阶段），直接把散装 PNG 拷进 .app，
+# 靠 Info.plist 的 CFBundleIconFiles 生效 —— 否则桌面只会显示空白网格占位。
+if [[ -f "$WORK/Assets.car" ]]; then
+  echo "→ 图标：Assets.car 已生成（$(/usr/bin/stat -f%z "$WORK/Assets.car") B）"
+else
+  echo "⚠  没有 Assets.car，走散装 PNG 兜底"
+  copied=0
+  for f in "$ROOT"/Sources/Resources/Icon-*.png; do
+    if [[ -f "$f" ]]; then
+      cp "$f" "$WORK/"
+      copied=$((copied+1))
+    fi
+  done
+  if [[ "$copied" -eq 0 ]]; then
+    echo "✗ 散装图标也没有，App 将显示空白图标" >&2
+  else
+    echo "→ 已拷入 $copied 个 Icon-*.png"
+  fi
+fi
+
 # ---- ad-hoc 签名（补 LC_CODE_SIGNATURE 槽 + entitlements）----
 # entitlements 走外部 plist：iOS 16.1 + TrollStore 下 ad-hoc 签名保留特批权限
 # （wifi-info / HotspotConfiguration），普通开发者证书拿不到这两项。

@@ -29,6 +29,13 @@ targets:
     platform: iOS
     sources:
       - path: Sources
+        excludes:
+          - "Resources/**"
+      # 资源目录单独声明，强制进 Copy Bundle Resources 阶段：
+      # 只写 `- path: Sources` 时 XcodeGen 不会把 .xcassets 放进资源阶段，
+      # actool 根本不跑，编出来的 .app 里没有 AppIcon / Assets.car。
+      - path: Sources/Resources
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: top.shareway.pandalink
@@ -37,6 +44,7 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
         ENABLE_USER_SCRIPT_SANDBOXING: "NO"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: ""
 
 schemes:
   PandaLink:
