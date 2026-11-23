@@ -1,0 +1,12 @@
+# 所有文本按 LF 存储，避免 Windows 检出把 shell 脚本转成 CRLF（bash 会崩）
+* text=auto eol=lf
+
+# shell 脚本必须 LF
+*.sh text eol=lf
+Makefile text eol=lf
+
+# 二进制不要碰
+*.png binary
+*.jpg binary
+*.ipa binary
+*.dSYM.zip binary

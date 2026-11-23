@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>zh_CN</string>
+	<key>CFBundleDisplayName</key>
+	<string>PandaLink</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>MinimumOSVersion</key>
+	<string>16.1</string>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>arm64</string>
+	</array>
+	<key>UIDeviceFamily</key>
+	<array>
+		<integer>1</integer>
+	</array>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+		<string>processing</string>
+	</array>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_carlink._tcp</string>
+		<string>_carlink._tcp.</string>
+		<string>_airplay._tcp</string>
+		<string>_raop._tcp</string>
+	</array>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>PandaLink 需要访问本地网络，以便发现并连接车机进行画面投射。</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>PandaLink 需要蓝牙权限以读取车机蓝牙名称，完成配对识别。</string>
+	<key>NSCameraUsageDescription</key>
+	<string>PandaLink 需要相机权限以扫描车机上的配对二维码。</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>PandaLink 需要定位权限以读取当前连接的 Wi-Fi 信息。</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>top.shareway.pandalink.projection.refresh</string>
+		<string>top.shareway.pandalink.projection.cleanup</string>
+	</array>
+</dict>
+</plist>

@@ -1,0 +1,19 @@
+# Xcode / 构建产物
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcworkspace/xcuserdata/
+dist/
+*.ipa
+*.dSYM.zip
+
+# XcodeGen 生成物（CI 每次自己 generate）
+PandaLink.xcodeproj/
+
+# 日志
+build.log
+*.log
+
+# macOS
+.DS_Store

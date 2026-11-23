@@ -1,0 +1,83 @@
+name: build-ipa
+
+# 仓库根目录 = PandaLink 工程目录（project.yml / Sources / Info.plist / scripts 都在根上）。
+# 触发方式：push 或手动 Run workflow。
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    # iOS SDK / xcodebuild 只在 macOS 上存在
+    runs-on: macos-14
+    timeout-minutes: 40
+
+    steps:
+      - name: 检出
+        uses: actions/checkout@v4
+
+      - name: 选择 Xcode
+        run: |
+          if [ -d /Applications/Xcode_15.4.app ]; then
+            sudo xcode-select -s /Applications/Xcode_15.4.app
+          else
+            sudo xcode-select -s /Applications/Xcode.app
+          fi
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+
+      - name: 安装 XcodeGen
+        run: |
+          brew install xcodegen
+          xcodegen --version
+
+      - name: 生成工程
+        run: xcodegen generate
+
+      - name: 编译（不签名，arm64，iOS 16.1）
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project PandaLink.xcodeproj \
+            -scheme PandaLink \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_ENTITLEMENTS="" \
+            ARCHS=arm64 \
+            ONLY_ACTIVE_ARCH=NO \
+            build 2>&1 | tee build.log
+
+      - name: 打包成 IPA
+        run: bash scripts/make_ipa.sh
+
+      - name: 校验产物
+        run: |
+          set -e
+          IPA=dist/PandaLink.ipa
+          test -f "$IPA" || { echo "缺少 $IPA"; exit 1; }
+          unzip -l "$IPA" | head -n 40
+          echo "--- 解包检查 ---"
+          rm -rf /tmp/check && mkdir -p /tmp/check
+          unzip -q "$IPA" -d /tmp/check
+          APP=/tmp/check/Payload/PandaLink.app
+          test -d "$APP"
+          /usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$APP/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist"
+          /usr/bin/lipo -info "$APP/PandaLink"
+          /usr/bin/codesign -dv "$APP" 2>&1 || echo "（未签名，TrollStore 直接装）"
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: PandaLink-unsigned-ipa
+          path: |
+            dist/PandaLink.ipa
+            build.log
+          retention-days: 30
