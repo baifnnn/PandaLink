@@ -83,11 +83,14 @@ struct ContentView: View {
             Text("通道").font(.subheadline).foregroundStyle(.secondary)
             ForEach(ChannelRole.allCases, id: \.self) { role in
                 HStack {
-                    Text(role.label).font(.caption.monospaced())
-                    Text(":\(role.port)").font(.caption2.monospaced())
+                    Text(verbatim: role.label).font(.caption.monospaced())
+                    // 用 verbatim + String 拼接：Text 的默认插值走 LocalizedStringKey，
+                    // 会把 UInt16 交给 Formatter 加千分位（57209 -> "57,209"）。
+                    Text(verbatim: ":" + String(role.port))
+                        .font(.caption2.monospaced())
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Text("\(session.frameCounts[role.label] ?? 0) 帧")
+                    Text(verbatim: String(session.frameCounts[role.label] ?? 0) + " 帧")
                         .font(.caption.monospaced())
                         .foregroundStyle(.secondary)
                 }
