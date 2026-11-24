@@ -103,6 +103,8 @@ final class H264Decoder: NSObject {
         }
 
         var blockBuffer: CMBlockBuffer?
+        // memoryBlock 传 nil 时必须带 kCMBlockBufferAssureMemoryNowFlag，
+        // 否则底层只是记下长度、真正写入时才分配，ReplaceDataBytes 可能拿不到内存。
         let status = CMBlockBufferCreateWithMemoryBlock(
             allocator: kCFAllocatorDefault,
             memoryBlock: nil,
@@ -111,7 +113,7 @@ final class H264Decoder: NSObject {
             customBlockSource: nil,
             offsetToData: 0,
             dataLength: avcc.count,
-            flags: 0,
+            flags: kCMBlockBufferAssureMemoryNowFlag,
             blockBufferOut: &blockBuffer)
         guard status == kCMBlockBufferNoErr, let bb = blockBuffer else {
             log("CMBlockBufferCreateWithMemoryBlock 失败 \(status)")

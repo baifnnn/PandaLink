@@ -143,9 +143,13 @@ final class WFDClient {
             state = .failed("端口非法")
             return
         }
-        let params = NWParameters.tcp
+        // TCP_NODELAY 在 Network framework 里挂在 NWProtocolTCP.Options 上，
+        // 不是 NWParameters 的属性（写 params.noDelay 会编不过）。
+        let tcpOptions = NWProtocolTCP.Options()
+        tcpOptions.noDelay = true
+        tcpOptions.connectionTimeout = 8
+        let params = NWParameters(tls: nil, tcp: tcpOptions)
         params.allowLocalEndpointReuse = true
-        params.noDelay = true
         let conn = NWConnection(host: NWEndpoint.Host(host),
                                 port: nwPort,
                                 using: params)
@@ -184,7 +188,8 @@ final class WFDClient {
         tsDemuxer.reset()
         inbound.removeAll()
         session = nil
-        if state != .failed("") { state = .stopped }
+        // 已经是 .failed 就保留错误信息给界面看，别覆盖成 .stopped
+        if !isFailed { state = .stopped }
     }
 
     private var isFailed: Bool {
