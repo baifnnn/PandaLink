@@ -128,29 +128,43 @@ AUTH 之后，control / sensor / media / cert / video 五条通道的 body 都�
 
 ```
 PandaLink/
-├── project.yml                     XcodeGen 描述（deploymentTarget 16.1）
-├── Info.plist                      MinimumOSVersion 16.1
-├── scripts/make_ipa.sh             产物打包成 Payload/PandaLink.app → .ipa
-├── .github/workflows/build.yml     macOS CI，出未签名 IPA
+├── project.yml                     XcodeGen 描述（deploymentTarget 16.1，资源阶段单独声明）
+├── Info.plist                      MinimumOSVersion 16.1 + CFBundleIconName
+├── scripts/make_ipa.sh             打 Payload/PandaLink.app → .ipa（含签名兜底）
+├── scripts/sign_unsigned.py        给 CODE_SIGNING_ALLOWED=NO 的裸二进制补 ad-hoc 签名
+├── scripts/PandaLink.entitlements  7 项 entitlement（热点 / 网络 / 麦克风）
+├── .github/workflows/build.yml     macOS CI（macos-latest），出未签名 IPA
 └── Sources/
     ├── App/
     │   ├── PandaLinkApp.swift      @main
-    │   ├── CarLinkSession.swift    ObservableObject，状态与日志
-    │   └── ContentView.swift       SwiftUI 界面（四卡片 + 底部启停）
+    │   ├── CarLinkSession.swift    ObservableObject，状态 / 日志 / 视频编排
+    │   ├── ContentView.swift       SwiftUI 界面（五卡片 + 底部启停）
+    │   └── VideoSurface.swift      AVSampleBufferDisplayLayer 的 UIViewRepresentable
     ├── Net/
     │   ├── CarlinkListener.swift   六端口 NWListener + 角色分派
     │   ├── CarlinkChannel.swift    单通道读写（序号、拆包、加解密钩子）
+    │   ├── WFDClient.swift         RTSP 会话 + `$` 交织 / RTP 收流 + 媒体模式嗅探
     │   └── ECPTransport.swift      ECP 客户端连接（CarLife 链路备用）
-    └── Protocol/
-        ├── CarlinkFrame.swift      20 字节头帧编解码 + CRC-16/ARC + 流拆包
-        ├── CarlinkAuthChannel.swift ECDH/SessionKey/AuthResponse/AuthConfirm
-        ├── CarlinkControlChannel.swift  心跳 / 端口协商 / UCarConfig
-        ├── CarLinkPorts.swift      六端口常量 + 发现记录
-        ├── Crypto.swift            P-256 / HMAC / AES-GCM 封装
-        ├── Proto.swift             最小 protobuf 编解码
-        ├── ECP.swift               ECP 16 字节小端帧（CarLife 链路）
-        ├── ECPMessages.swift       ECP 的 JSON 报文（手写转义，不用 JSONEncoder）
-        └── ECPTLV.swift            ECP 的 TLV 层
+    ├── Media/
+    │   ├── VideoPipeline.swift     访问单元 → 切帧 → 解码 → 回调（线程隔离层）
+    │   └── H264Decoder.swift       VideoToolbox 解码 + AVSampleBufferDisplayLayer 送显
+    ├── Protocol/
+    │   ├── CarlinkFrame.swift      20 字节头帧编解码 + CRC-16/ARC + 流拆包
+    │   ├── CarlinkAuthChannel.swift ECDH/SessionKey/AuthResponse/AuthConfirm
+    │   ├── CarlinkControlChannel.swift  心跳 / 端口协商 / UCarConfig
+    │   ├── CarLinkPorts.swift      六端口常量 + 发现记录 + WFD 7236
+    │   ├── Crypto.swift            P-256 / HMAC / AES-GCM 封装
+    │   ├── Proto.swift             最小 protobuf 编解码
+    │   ├── RTSPMessage.swift       RTSP 报文编解码 + 流式拆包
+    │   ├── RTP.swift               RTP 解析 / H.264 去分片 / TS 解复用
+    │   ├── H264AccessUnitSplitter.swift  Annex-B 切访问单元 + SPS 解析宽高
+    │   ├── WFDParameters.swift     WFD 能力头（字面量取自 libovmsink.so）
+    │   ├── ECP.swift               ECP 16 字节小端帧（CarLife 链路）
+    │   ├── ECPMessages.swift       ECP 的 JSON 报文（手写转义，不用 JSONEncoder）
+    │   └── ECPTLV.swift            ECP 的 TLV 层
+    └── Resources/
+        ├── Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png
+        └── Icon-*.png              8 个散装尺寸（Assets.car 缺席时的兜底）
 ```
 
 ---
@@ -161,13 +175,16 @@ Windows 上没法编，但有两条机器校验能挡住"抄错一位、编译�
 
 ```powershell
 cd D:\Projects\_work\panda
-python swift_syntax_check.py     # tree-sitter-swift 解析 15 个 .swift，找 ERROR / missing 节点
+python swift_syntax_check.py     # tree-sitter-swift 解析全部 .swift，找 ERROR / missing 节点
 python proto_field_check.py      # Proto.swift 里每个 writeXxx(N,…) 的 N 与 smali 的 *_FIELD_NUMBER 逐条比对
 ```
 
 `proto_field_check.py` 已经抓出过真 bug：`workModes` 原来写 19（那是 `isSupportPoiNav`）、
 `isSupportHevc` 原来写 20（那是 `isSupportRotation`），正确值是 **18 / 23**。
 这两个错编译期不报、静态读代码也很难看出，只有拿 smali 常量表对才现形。
+
+CI 也不能代替编译：`NWParameters.noDelay` 这种"看起来合理但属性挂在别的类上"的错，
+只有真机 SDK 才会报（第一次 CI 就栽在这上面，正确写法是 `NWProtocolTCP.Options().noDelay`）。
 
 ---
 
@@ -192,8 +209,12 @@ bash scripts/make_ipa.sh
 
 ### CI
 
-把 `PandaLink/` 目录内容作为仓库根 push 到 GitHub，`build.yml` 自动跑（`macos-14` + Xcode 15.4），
-产物在 Actions 的 artifact `PandaLink-unsigned-ipa` 里。
+把 `PandaLink/` 目录内容作为仓库根 push 到 GitHub，`build.yml` 自动跑，产物在 Actions 的
+artifact `PandaLink-unsigned-ipa` 里。
+
+**`runs-on` 必须是 `macos-latest`。** 写 `macos-14` 会 2 秒就被 cancelled，
+annotation 是 `The configuration 'macos-14-arm64-us-default' is not supported`；
+`macos-13` / `macos-15` 则会长时间分不到机器。
 
 ### 装机
 
@@ -207,14 +228,18 @@ TrollStore 会自己 ad-hoc 签名，不需要证书。
 1. **iOS 不能把自己开成热点。** 安卓侧靠 `LocalOnlyHotspot` + 提权跑 `hotspot_ap.dex` 把手机变成 AP；
    iOS 对应的 `NEHotspotConfiguration` 需要 Apple 特批 entitlement，普通侧载拿不到。
    所以本客户端的工作模式是：**车机开热点（或同一局域网），手机连进去，车机反向连手机的这六个端口。**
-2. **视频流走 WFD/H.264**，安卓侧是 `libovmsink.so`（1.4 MB 原生库）解码。
-   iOS 首版只做到握手 + 控制通道 + 帧统计，**视频解码渲染还没接**（需要 VideoToolbox 起 H.264 解码器）。
+2. **视频已经接了**：AUTH 成功后按 `SinkNative.start(ip, 7236, 1280, 720, dpi, 30, …)` 的行为，
+   主动连车机的 WFD RTSP 服务端（默认 7236），RTSP 协商完在 TCP 交织通道收 RTP，
+   H.264 去分片 → Annex-B 切访问单元 → VideoToolbox 解码 → `AVSampleBufferDisplayLayer` 显示。
+   TS 与裸 H.264 两种封装由前 30 个包投票自动判定。
 3. **CarLife（百度）链路未实现。** 那条走 AOA/USB + tcp:10922/10920/10921，
    安卓侧其实也只是 `com.baidu.carlife` 的壳。`ECP.swift` 是它的协议层，保留备用。
 4. **PIN 默认空。** 原安卓版随机生成 6 位 PIN 让用户手动确认，这里留了 `pin` 字段但默认空
    （空 PIN 时 `authPkHmac` / `agreementPkSig` 按协议发空字节，握手照样成立）。
-5. **车机侧兼容性未实测。** 所有报文结构来自 smali 静态复原，没有真车机联调过。
-   第一次连不上时，把 App 里的日志（每通道前 3 帧）导出来对照第四节核对。
+5. **车机侧兼容性未实测。** 六端口控制面来自 smali 静态复原；WFD 侧按标准 Miracast +
+   `libovmsink.so` 的字面量复原。私有扩展（`iccoa_support_hevc` / `ovm_control_capability` /
+   `wfd_car_display_mode` 的 `mode=0` 语义）等砸壳包到手再校准。
+   第一次连不上时，把 App 里的日志导出来对照第二节核对。
 
 ---
 
