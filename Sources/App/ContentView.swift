@@ -12,6 +12,7 @@ struct ContentView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
+                    videoCard
                     statusCard
                     pinCard
                     channelCard
@@ -29,6 +30,63 @@ struct ContentView: View {
                 }
             }
             .safeAreaInset(edge: .bottom) { bottomBar }
+        }
+    }
+
+    // MARK: 视频
+
+    private var videoCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("画面").font(.subheadline).foregroundStyle(.secondary)
+                Spacer()
+                Text(session.videoState.label)
+                    .font(.caption2)
+                    .foregroundStyle(session.videoActive ? .green : .secondary)
+            }
+
+            ZStack {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.black)
+                VideoSurface(renderer: session.renderer)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                if !session.videoActive {
+                    VStack(spacing: 6) {
+                        Image(systemName: "airplayvideo")
+                            .font(.largeTitle)
+                            .foregroundStyle(.white.opacity(0.35))
+                        Text(session.videoState.label)
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.55))
+                    }
+                }
+            }
+            .aspectRatio(16.0 / 9.0, contentMode: .fit)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+            )
+
+            HStack(spacing: 16) {
+                if !session.videoSize.isEmpty {
+                    metric("尺寸", session.videoSize)
+                }
+                metric("帧", "\(session.videoFrames)")
+                metric("RTP", "\(session.rtpPackets)")
+                if !session.mediaMode.isEmpty {
+                    metric("封装", session.mediaMode.contains("TRANSPORT") ? "TS" : "ES")
+                }
+                Spacer()
+            }
+            .font(.caption2.monospaced())
+        }
+        .card()
+    }
+
+    private func metric(_ k: String, _ v: String) -> some View {
+        HStack(spacing: 4) {
+            Text(k).foregroundStyle(.tertiary)
+            Text(verbatim: v).foregroundStyle(.secondary)
         }
     }
 
